@@ -32,7 +32,8 @@ def create_recipe(user, **params):
 
     defaults.update(params)
 
-    return Recipe.objects.create(user=user, **defaults)
+    recipe = Recipe.objects.create(user=user, **defaults)
+    return recipe
 
 
 class PublicRecipeAPITests(TestCase):
@@ -48,9 +49,9 @@ class PublicRecipeAPITests(TestCase):
 class PrivateRecipeAPITests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.user = get_user_model().objects.create(
-            email='testuser@example.com',
-            password='testpassword123',
+        self.user = get_user_model().objects.create_user(
+            'testuser@example.com',
+            'testpassword123',
         )
         self.client.force_authenticate(self.user)
 
@@ -65,10 +66,10 @@ class PrivateRecipeAPITests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data, serializer.data)
 
-    def test_recipe_list_limited_to_auth(self):
-        other_user = get_user_model().objects.create(
-            email='otheruser@example.com',
-            password='otherpassword123',
+    def test_recipe_list_limited_to_user(self):
+        other_user = get_user_model().objects.create_user(
+            'otheruser@example.com',
+            'otherpassword123',
         )
 
         create_recipe(user=other_user)
