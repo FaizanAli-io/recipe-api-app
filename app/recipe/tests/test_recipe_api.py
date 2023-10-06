@@ -36,6 +36,11 @@ def create_recipe(user, **params):
     return recipe
 
 
+def create_user(**params):
+    """Create and return a new user."""
+    return get_user_model().objects.create_user(**params)
+
+
 class PublicRecipeAPITests(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -49,9 +54,9 @@ class PublicRecipeAPITests(TestCase):
 class PrivateRecipeAPITests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.user = get_user_model().objects.create_user(
-            'testuser@example.com',
-            'testpassword123',
+        self.user = create_user(
+            email='testuser@example.com',
+            password='testpassword123',
         )
         self.client.force_authenticate(self.user)
 
@@ -67,9 +72,9 @@ class PrivateRecipeAPITests(TestCase):
         self.assertEqual(res.data, serializer.data)
 
     def test_recipe_list_limited_to_user(self):
-        other_user = get_user_model().objects.create_user(
-            'otheruser@example.com',
-            'otherpassword123',
+        other_user = create_user(
+            email='otheruser@example.com',
+            password='otherpassword123',
         )
 
         create_recipe(user=other_user)
@@ -105,3 +110,80 @@ class PrivateRecipeAPITests(TestCase):
         for k, v in payload.items():
             self.assertEqual(getattr(recipe, k), v)
         self.assertEqual(recipe.user, self.user)
+
+    def test_partial_update(self):
+        original_link = 'http://example.com/recipe_original.pdf'
+        recipe = create_recipe(
+            user=self.user,
+            title='Sample Recipe Title',
+            link=original_link,
+        )
+
+        payload = {'title': 'New Recipe Title'}
+        url = detail_url(recipe.id)
+        res = self.client.patch(url, payload)
+        recipe.refresh_from_db()
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(recipe.title, payload['title'])
+        self.assertEqual(recipe.link, original_link)
+        self.assertEqual(recipe.user, self.user)
+
+    def test_full_update(self):
+        recipe = create_recipe(
+            user=self.user,
+            title='Sample Recipe Title',
+            description='Sample Recipe Description',
+            link='http://example.com/recipe_original.pdf',
+        )
+
+        payload = {
+            'title': 'New Recipe Title',
+            'description': 'New Recipe Description',
+            'link': 'http://example.com/recipe_new.pdf',
+            'price': Decimal('2.50'),
+            'time_minutes': 10,
+        }
+
+        url = detail_url(recipe.id)
+        res = self.client.put(url, payload)
+        recipe.refresh_from_db()
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        for k, v in payload.items():
+            self.assertEqual(getattr(recipe, k), v)
+        self.assertEqual(recipe.user, self.user)
+
+    def test_update_user_returns_error(self):
+        other_user = create_user(
+            email='otheruser2@example.com',
+            password='otherpassword123')
+
+        recipe = create_recipe(user=self.user)
+        payload = {'user': other_user}
+        url = detail_url(recipe.id)
+        self.client.patch(url, payload)
+        recipe.refresh_from_db()
+
+        self.assertEqual(recipe.user, self.user)
+
+    def test_delete_recipe(self):
+        recipe = create_recipe(user=self.user)
+
+        url = detail_url(recipe.id)
+        res = self.client.delete(url)
+
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Recipe.objects.filter(id=recipe.id).exists())
+
+    def test_delete_other_users_recipe_error(self):
+        other_user = create_user(
+            email='otheruser3@example.com',
+            password='otherpassword123')
+        recipe = create_recipe(user=other_user)
+
+        url = detail_url(recipe.id)
+        res = self.client.delete(url)
+
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertTrue(Recipe.objects.filter(id=recipe.id).exists())
