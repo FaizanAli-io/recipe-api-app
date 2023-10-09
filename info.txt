@@ -1,0 +1,8 @@
+COMMANDS:-
+    run: docker-compose up
+    build: docker-compose build
+    command line: docker-compose run --rm app sh -c "python manage.py XYZ"
+
+SUPERUSER ACCOUNT:-
+    user: admin@example.com
+    pass: testpass123

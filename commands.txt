@@ -1,4 +1,0 @@
-RUN: docker-compose up
-BUILD: docker-compose build
-
-CMD LINE: docker-compose run --rm app sh -c "python manage.py XYZ"
