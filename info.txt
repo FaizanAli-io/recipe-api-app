@@ -4,5 +4,6 @@ COMMANDS:-
     command line: docker-compose run --rm app sh -c "python manage.py XYZ"
 
 SUPERUSER ACCOUNT:-
+    token: 9f2662bd3ef202fd05061e6aefd8fd54c8bbefc3
     user: admin@example.com
     pass: testpass123
