@@ -47,6 +47,14 @@ def create_recipe(user, **params):
     return recipe
 
 
+def create_tag(user, **params):
+    return Tag.objects.create(user=user, **params)
+
+
+def create_ingredient(user, **params):
+    return Ingredient.objects.create(user=user, **params)
+
+
 def create_user(email='testuser@example.com',
                 password='testpass123'):
     return get_user_model().objects.create_user(email, password)
@@ -360,6 +368,46 @@ class PrivateRecipeAPITests(TestCase):
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(recipe.ingredients.count(), 0)
+
+    def test_filter_by_tags(self):
+        r1 = create_recipe(self.user, title="Thai Vegetable Curry")
+        r2 = create_recipe(self.user, title="Aubergine with Tahini")
+        r3 = create_recipe(self.user, title="Fish and Chips")
+        t1 = create_tag(self.user, name="Vegetarian")
+        t2 = create_tag(self.user, name="Vegan")
+        r1.tags.add(t1)
+        r2.tags.add(t2)
+
+        params = {"tags": f"{t1.id},{t2.id}"}
+        res = self.client.get(RECIPES_URL, params)
+
+        s1 = RecipeSerializer(r1)
+        s2 = RecipeSerializer(r2)
+        s3 = RecipeSerializer(r3)
+
+        self.assertIn(s1.data, res.data)
+        self.assertIn(s2.data, res.data)
+        self.assertNotIn(s3.data, res.data)
+
+    def test_filter_by_ingredients(self):
+        r1 = create_recipe(self.user, title="Thai Vegetable Curry")
+        r2 = create_recipe(self.user, title="Aubergine with Tahini")
+        r3 = create_recipe(self.user, title="Fish and Chips")
+        in1 = create_ingredient(self.user, name="Lettuce")
+        in2 = create_ingredient(self.user, name="Sugar")
+        r1.ingredients.add(in1)
+        r2.ingredients.add(in2)
+
+        params = {"ingredients": f"{in1.id},{in2.id}"}
+        res = self.client.get(RECIPES_URL, params)
+
+        s1 = RecipeSerializer(r1)
+        s2 = RecipeSerializer(r2)
+        s3 = RecipeSerializer(r3)
+
+        self.assertIn(s1.data, res.data)
+        self.assertIn(s2.data, res.data)
+        self.assertNotIn(s3.data, res.data)
 
 
 class ImageUploadTests(TestCase):
